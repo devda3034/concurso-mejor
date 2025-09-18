@@ -86,20 +86,28 @@
         return;
       }
       navigator.geolocation.getCurrentPosition(position => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        msg.textContent = `Coordenadas obtenidas: ${lat.toFixed(5)}, ${lon.toFixed(5)}. Verificando...`;
-        // Comprueba si está en Ecuador
-        if (esEnEcuador(lat, lon)) {
-          msg.textContent = "Ubicación validada: participante en Ecuador. Redirigiendo al concurso...";
-          // pequeña demora para que el usuario vea el mensaje, luego redirect
-          setTimeout(() => { window.location.href = CONCURSO_URL; }, 900);
-        } else {
-          err.textContent = "Lo sentimos, tu ubicación no corresponde a Ecuador. No puedes participar.";
-          msg.textContent = "";
-        }
-      }, manejarErrorGeoloc, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-    });
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  msg.textContent = `Coordenadas obtenidas: ${lat.toFixed(5)}, ${lon.toFixed(5)}. Verificando...`;
+
+  // Enviar coordenadas al endpoint
+  fetch('/api/registrar-coordenadas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lon })
+  })
+  .then(res => res.json())
+  .then(data => console.log(data))
+  .catch(err => console.error('Error al enviar coordenadas:', err));
+
+  if (esEnEcuador(lat, lon)) {
+    msg.textContent = "Ubicación validada: participante en Ecuador. Redirigiendo al concurso...";
+    setTimeout(() => { window.location.href = CONCURSO_URL; }, 900);
+  } else {
+    err.textContent = "Lo sentimos, tu ubicación no corresponde a Ecuador. No puedes participar.";
+    msg.textContent = "";
+  }
+}, manejarErrorGeoloc, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
 
     noBtn.addEventListener('click', () => {
       msg.textContent = "Has decidido no participar. Gracias por visitar.";
