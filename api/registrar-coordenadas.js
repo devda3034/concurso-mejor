@@ -1,11 +1,10 @@
-// api/registrar-coordenadas.js
 export default function handler(req, res) {
   if (req.method === "POST") {
-    const { lat, lon } = req.body; // recibe latitud y longitud
+    const { lat, lon } = req.body;
     console.log("Coordenadas recibidas:", lat, lon);
 
-    // Aquí podrías guardarlas en una base de datos si quieres
-    // Ej: MongoDB, Supabase, Firebase, etc.
+    // Aquí puedes guardar la ubicación en una base de datos
+    // Ej: MongoDB, Firebase, Supabase, etc.
 
     res.status(200).json({ message: "Coordenadas recibidas correctamente" });
   } else {
